@@ -16,8 +16,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install requests
+      - run: pip install requests numpy pandas scipy
       - run: python indir.py
+      - run: python kaydet.py
       - name: Kaydet
         run: |
           git config user.name "veri-botu"
