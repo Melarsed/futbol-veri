@@ -197,7 +197,7 @@ if len(pred):
     pred["Time"] = t.dt.strftime("%H:%M").fillna("")
     pred = pred.sort_values(["Date", "sira", "Time"])
 
-tab1, tab2, tab3, tab4 = st.tabs(["⚽ Maçlar", "🎯 En güvenli", "📒 Tahmin kaydı", "📊 Model başarısı"])
+tab1, tab2, tab5, tab3, tab4 = st.tabs(["⚽ Maçlar", "🎯 En güvenli", "🧾 Kupon", "📒 Tahmin kaydı", "📊 Model başarısı"])
 
 # ---- 1) Maç kartları
 with tab1:
@@ -232,16 +232,83 @@ with tab2:
                     rows.append({"Maç": f"{r['HomeTeam']} - {r['AwayTeam']}",
                                  "Tarih": r["Date"].strftime("%d.%m"), "Lig": r["Lig"],
                                  "Bahis": BETS[key][0], "Olasılık": p, "Geçmiş tutma": h,
-                                 "Güven": level(h), "Oran": r.get(ODDS_COL.get(key, ""), np.nan)})
+                                 "Güven": level(h), "Adil oran": 1 / p})
         if rows:
             t = pd.DataFrame(rows).sort_values("Geçmiş tutma", ascending=False)
             st.dataframe(t, hide_index=True, width="stretch", column_config={
                 "Olasılık": st.column_config.NumberColumn(format="percent"),
                 "Geçmiş tutma": st.column_config.NumberColumn(format="percent"),
-                "Oran": st.column_config.NumberColumn(format="%.2f")})
+                "Adil oran": st.column_config.NumberColumn(format="%.2f")})
+            st.caption("Adil oran = programın olasılığına göre olması gereken oran. "
+                       "İddaa'daki oran bundan düşükse o bahis uzun vadede kaybettirir.")
         else:
             st.info("Bu eşikte seçim yok. Eşiği düşür.")
         st.caption("Kombinede olasılıklar çarpılır: %75'lik üç seçimin hepsinin tutma ihtimali yaklaşık %42.")
+
+
+# ---- Kupon analizi
+with tab5:
+    st.markdown("Maç ve bahis seç, İddaa'daki oranı yaz. Program her seçimin ve kuponun "
+                "gerçek tutma ihtimalini ve oranın adil olup olmadığını hesaplar.")
+    if "kupon" not in st.session_state:
+        st.session_state.kupon = []
+    if pred.empty:
+        st.info("Bu aralıkta maç yok.")
+    else:
+        pred["etiket"] = pred["Date"].dt.strftime("%d.%m") + " " + pred["HomeTeam"] + " - " + pred["AwayTeam"]
+        mac = st.selectbox("Maç", pred["etiket"].tolist(), index=None, placeholder="Maç ara…")
+        if mac:
+            r = pred[pred["etiket"] == mac].iloc[0]
+            secenek = [k for k in BETS if k in r and pd.notna(r[k])]
+            bahis = st.selectbox("Bahis", secenek,
+                                 format_func=lambda k: f"{BETS[k][0]}  ·  {pct(r[k])}  ·  adil oran {1 / r[k]:.2f}")
+            if st.button("➕ Kupona ekle"):
+                st.session_state.kupon.append({"mac": mac, "bahis": bahis, "p": float(r[bahis]),
+                                               "oran": round(max(1.01, 1 / r[bahis]), 2)})
+                st.rerun()
+    kp = st.session_state.kupon
+    if kp:
+        st.divider()
+        prob, oran_carp = 1.0, 1.0
+        maclar = [k["mac"] for k in kp]
+        for i, k in enumerate(kp):
+            with st.container(border=True):
+                st.markdown(f"**{k['mac']}**  \n{BETS[k['bahis']][0]} · tutma ihtimali **{pct(k['p'])}** "
+                            f"· adil oran **{1 / k['p']:.2f}**")
+                c1, c2 = st.columns([3, 1])
+                k["oran"] = c1.number_input("İddaa oranı", 1.01, 100.0, float(k["oran"]), 0.01,
+                                            key=f"oran_{i}_{k['mac']}_{k['bahis']}")
+                deger = k["p"] * k["oran"] - 1
+                if deger >= 0:
+                    c1.markdown(f":green[✅ Oran adil veya iyi ({int(round(deger * 100)):+d}%)]")
+                elif deger >= -0.07:
+                    c1.markdown(f":orange[⚠️ Oran biraz düşük ({int(round(deger * 100)):+d}%)]")
+                else:
+                    c1.markdown(f":red[❌ Oran çok düşük ({int(round(deger * 100)):+d}%)]")
+                if c2.button("Sil", key=f"sil_{i}"):
+                    kp.pop(i)
+                    st.rerun()
+            prob *= k["p"]
+            oran_carp *= k["oran"]
+        if len(set(maclar)) < len(maclar):
+            st.warning("Aynı maçtan birden fazla seçim var. Bu seçimler birbirine bağlı olduğu için "
+                       "kupon ihtimali hesabı yanlış olur; aynı maçı tek seçimle oyna.")
+        beklenti = prob * oran_carp - 1
+        st.subheader("Kupon özeti")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Tutma ihtimali", f"%{prob * 100:.1f}", f"{1 / prob:.0f} kuponda 1" if prob < 0.5 else None,
+                  delta_color="off")
+        c2.metric("İddaa kupon oranı", f"{oran_carp:.2f}")
+        c3.metric("Adil kupon oranı", f"{1 / prob:.2f}")
+        if beklenti >= 0:
+            st.success(f"Uzun vadede her 100 TL için beklenen sonuç: **{int(round(beklenti * 100)):+d} TL**")
+        else:
+            st.error(f"Uzun vadede her 100 TL için beklenen sonuç: **{int(round(beklenti * 100)):+d} TL**")
+        if prob < 0.2:
+            st.caption("Kupon ihtimali %20'nin altında. Maç sayısını azaltmak hem ihtimali hem beklentiyi iyileştirir.")
+        if st.button("🗑️ Kuponu temizle"):
+            st.session_state.kupon = []
+            st.rerun()
 
 # ---- 3) Tahmin kaydı (GitHub'da otomatik tutulur)
 with tab3:
