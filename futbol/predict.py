@@ -103,7 +103,6 @@ BETS = {
     "IY_Ust15": ("İY 1.5 Üst", lambda r: (r["HTHG"] + r["HTAG"]) >= 2),
     "IY_Alt15": ("İY 1.5 Alt", lambda r: (r["HTHG"] + r["HTAG"]) <= 1),
     "Ust25_Var": ("2.5 Üst & KG Var", lambda r: (_tot(r) >= 3) & (r["FTHG"] > 0) & (r["FTAG"] > 0)),
-    "Ust15_Var": ("1.5 Üst & KG Var", lambda r: (_tot(r) >= 2) & (r["FTHG"] > 0) & (r["FTAG"] > 0)),
 }
 _MS = {"1": lambda r: r["FTHG"] > r["FTAG"], "X": lambda r: r["FTHG"] == r["FTAG"],
        "2": lambda r: r["FTHG"] < r["FTAG"]}
@@ -118,7 +117,7 @@ BET_GROUPS = {
     "1.5 Alt/Üst": ["Ust15", "Alt15"],
     "Toplam Gol": ["Gol_0_1", "Gol_2_3", "Gol_4_6", "Gol_7p"],
     "İlk Yarı 1.5": ["IY_Ust15", "IY_Alt15"],
-    "Üst & KG Var": ["Ust25_Var", "Ust15_Var"],
+    "2.5 Üst & KG Var": ["Ust25_Var"],
     "MS & 2.5 Üst": ["MS1_Ust25", "MSX_Ust25", "MS2_Ust25"],
     "MS & 1.5 Üst": ["MS1_Ust15", "MSX_Ust15", "MS2_Ust15"],
     "MS & KG Var": ["MS1_Var", "MSX_Var", "MS2_Var"],

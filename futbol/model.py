@@ -157,7 +157,6 @@ def markets(lam, mu, rho, ht_lam=None, ht_mu=None, ht_rho=0.0) -> dict:
     kg = (g[:, None] > 0) & (g[None, :] > 0)
     ev, dep, ber = g[:, None] > g[None, :], g[:, None] < g[None, :], g[:, None] == g[None, :]
     out["Ust25_Var"] = float(m[(tot >= 3) & kg].sum())
-    out["Ust15_Var"] = float(m[(tot >= 2) & kg].sum())
     for ad, ms in (("1", ev), ("X", ber), ("2", dep)):
         out[f"MS{ad}_Ust25"] = float(m[ms & (tot >= 3)].sum())
         out[f"MS{ad}_Ust15"] = float(m[ms & (tot >= 2)].sum())

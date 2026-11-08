@@ -24,19 +24,19 @@ GUNLER = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", 
 
 # Kartta gösterilen bahis satırları: (başlık, [(seçenek, sütun), ...])
 KART = [
-    ("Maç Sonucu", [("1", "MS1"), ("X", "MSX"), ("2", "MS2")]),
-    ("Karşılıklı Gol", [("Var", "KG_Var"), ("Yok", "KG_Yok")]),
+    ("MS", [("1", "MS1"), ("X", "MSX"), ("2", "MS2")]),
+    ("KG", [("Var", "KG_Var"), ("Yok", "KG_Yok")]),
     ("2.5 Gol", [("Üst", "Ust25"), ("Alt", "Alt25")]),
     ("1.5 Gol", [("Üst", "Ust15"), ("Alt", "Alt15")]),
     ("Toplam Gol", [("0-1", "Gol_0_1"), ("2-3", "Gol_2_3"), ("4-6", "Gol_4_6"), ("7+", "Gol_7p")]),
-    ("İlk Yarı 1.5", [("Üst", "IY_Ust15"), ("Alt", "IY_Alt15")]),
+    ("İY 1.5", [("Üst", "IY_Ust15"), ("Alt", "IY_Alt15")]),
 ]
-# Kombine bahisler: her seçenek ayrı bir bahistir (en yüksek olan vurgulanır)
+# Kombine bahisler (kartta açılır bölümde gösterilir)
 KOMBINE = [
-    ("Üst & KG Var", [("2.5 Üst & Var", "Ust25_Var"), ("1.5 Üst & Var", "Ust15_Var")]),
-    ("MS & 2.5 Üst", [("1 & Üst", "MS1_Ust25"), ("X & Üst", "MSX_Ust25"), ("2 & Üst", "MS2_Ust25")]),
-    ("MS & 1.5 Üst", [("1 & Üst", "MS1_Ust15"), ("X & Üst", "MSX_Ust15"), ("2 & Üst", "MS2_Ust15")]),
-    ("MS & KG Var", [("1 & Var", "MS1_Var"), ("X & Var", "MSX_Var"), ("2 & Var", "MS2_Var")]),
+    ("MS & 2.5 Üst", [("1", "MS1_Ust25"), ("X", "MSX_Ust25"), ("2", "MS2_Ust25")]),
+    ("MS & 1.5 Üst", [("1", "MS1_Ust15"), ("X", "MSX_Ust15"), ("2", "MS2_Ust15")]),
+    ("MS & KG Var", [("1", "MS1_Var"), ("X", "MSX_Var"), ("2", "MS2_Var")]),
+    ("2.5 Üst & KG Var", [("", "Ust25_Var")]),
 ]
 
 
@@ -110,7 +110,7 @@ def satirlar(r, cal, tanim):
         h, _ = hist_hit(cal, best[2], best[1])
         parts = []
         for ad, p, k in vals:
-            t = f"{ad} {pct(p)}"
+            t = f"{ad} {pct(p)}".strip()
             if k == best[2]:
                 t = f"**{t}**"
                 if not np.isnan(h) and h >= 0.75:
@@ -118,7 +118,7 @@ def satirlar(r, cal, tanim):
                 elif not np.isnan(h) and h >= 0.62:
                     t = f":orange[{t}]"
             parts.append(t)
-        lines.append(f"{baslik}: " + " · ".join(parts))
+        lines.append(f"**{baslik}** — " + " · ".join(parts))
     return "  \n".join(lines)
 
 
@@ -128,7 +128,8 @@ def kart(r, cal):
         st.markdown(f"**{r['HomeTeam']} – {r['AwayTeam']}**  \n"
                     f":gray[{r['Lig']} · {r['Date'].strftime('%d.%m')} {saat}]")
         st.markdown(satirlar(r, cal, KART))
-        st.markdown(":gray[**Kombine**]  \n" + satirlar(r, cal, KOMBINE))
+        with st.expander("Kombine bahisler"):
+            st.markdown(satirlar(r, cal, KOMBINE))
         st.caption(f"Olası skor {r['Skor']} ({pct(r['Skor_p'])}) · "
                    f"Gol beklentisi {r['xG_ev']:.2f} – {r['xG_dep']:.2f}"
                    + ("" if r["piyasa"] else " · oran yok, sadece model"))
