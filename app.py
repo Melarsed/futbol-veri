@@ -20,6 +20,8 @@ KALIB = DATA_DIR / "kalibrasyon.csv"
 OZET = DATA_DIR / "test_ozeti.json"
 ALL_LEAGUES = list(MAIN_LEAGUES) + list(EXTRA_LEAGUES)
 ODDS_COL = {"MS1": "OddH", "MSX": "OddD", "MS2": "OddA", "Ust25": "OddO25", "Alt25": "OddU25"}
+# 10 sezonluk testte maç sonucu en öngörülebilir ligler (favori isabeti %52+)
+ONGORULEBILIR = ["P1", "N1", "I1", "E0", "SC0", "G1", "SP1", "T1", "D1", "F1", "B1"]
 GUNLER = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
 
 # Kartta gösterilen bahis satırları: (başlık, [(seçenek, sütun), ...])
@@ -170,7 +172,12 @@ models = get_models(results, (len(results), str(results["Date"].max())))
 cal = get_calibration()
 
 with st.expander("🔎 Filtre"):
-    secili = st.multiselect("Ligler", ALL_LEAGUES, default=ALL_LEAGUES, format_func=league_name)
+    sadece = st.toggle("Sadece öngörülebilir ligler", value=True,
+                       help="10 sezonluk testte en çok tutan ligler: Portekiz, Hollanda, İtalya, "
+                            "Premier Lig, İskoçya, Yunanistan, İspanya, Türkiye, Almanya, Fransa, Belçika "
+                            "(1. ligler). 2. liglerde favoriler çok daha az kazanıyor.")
+    havuz = ONGORULEBILIR if sadece else ALL_LEAGUES
+    secili = st.multiselect("Ligler", havuz, default=havuz, format_func=league_name)
     c1, c2 = st.columns(2)
     gun = c1.slider("Kaç gün ilerisi", 1, 10, 3)
     ara = c2.text_input("Takım ara")
