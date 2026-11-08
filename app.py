@@ -31,6 +31,13 @@ KART = [
     ("Toplam Gol", [("0-1", "Gol_0_1"), ("2-3", "Gol_2_3"), ("4-6", "Gol_4_6"), ("7+", "Gol_7p")]),
     ("İlk Yarı 1.5", [("Üst", "IY_Ust15"), ("Alt", "IY_Alt15")]),
 ]
+# Kombine bahisler: her seçenek ayrı bir bahistir (en yüksek olan vurgulanır)
+KOMBINE = [
+    ("Üst & KG Var", [("2.5 Üst & Var", "Ust25_Var"), ("1.5 Üst & Var", "Ust15_Var")]),
+    ("MS & 2.5 Üst", [("1 & Üst", "MS1_Ust25"), ("X & Üst", "MSX_Ust25"), ("2 & Üst", "MS2_Ust25")]),
+    ("MS & 1.5 Üst", [("1 & Üst", "MS1_Ust15"), ("X & Üst", "MSX_Ust15"), ("2 & Üst", "MS2_Ust15")]),
+    ("MS & KG Var", [("1 & Var", "MS1_Var"), ("X & Var", "MSX_Var"), ("2 & Var", "MS2_Var")]),
+]
 
 
 # ---------------------------------------------------------------- veri / model
@@ -93,30 +100,35 @@ def pct(p):
     return f"%{p * 100:.0f}"
 
 
+def satirlar(r, cal, tanim):
+    lines = []
+    for baslik, secenekler in tanim:
+        vals = [(ad, r.get(k), k) for ad, k in secenekler if pd.notna(r.get(k))]
+        if not vals:
+            continue
+        best = max(vals, key=lambda v: v[1])
+        h, _ = hist_hit(cal, best[2], best[1])
+        parts = []
+        for ad, p, k in vals:
+            t = f"{ad} {pct(p)}"
+            if k == best[2]:
+                t = f"**{t}**"
+                if not np.isnan(h) and h >= 0.75:
+                    t = f":green[{t}]"
+                elif not np.isnan(h) and h >= 0.62:
+                    t = f":orange[{t}]"
+            parts.append(t)
+        lines.append(f"{baslik}: " + " · ".join(parts))
+    return "  \n".join(lines)
+
+
 def kart(r, cal):
     with st.container(border=True):
         saat = r.get("Time") if isinstance(r.get("Time"), str) and r.get("Time") not in ("nan", "") else ""
         st.markdown(f"**{r['HomeTeam']} – {r['AwayTeam']}**  \n"
                     f":gray[{r['Lig']} · {r['Date'].strftime('%d.%m')} {saat}]")
-        lines = []
-        for baslik, secenekler in KART:
-            vals = [(ad, r.get(k), k) for ad, k in secenekler if pd.notna(r.get(k))]
-            if not vals:
-                continue
-            best = max(vals, key=lambda v: v[1])
-            h, _ = hist_hit(cal, best[2], best[1])
-            parts = []
-            for ad, p, k in vals:
-                t = f"{ad} {pct(p)}"
-                if k == best[2]:
-                    t = f"**{t}**"
-                    if not np.isnan(h) and h >= 0.75:
-                        t = f":green[{t}]"
-                    elif not np.isnan(h) and h >= 0.62:
-                        t = f":orange[{t}]"
-                parts.append(t)
-            lines.append(f"{baslik}: " + " · ".join(parts))
-        st.markdown("  \n".join(lines))
+        st.markdown(satirlar(r, cal, KART))
+        st.markdown(":gray[**Kombine**]  \n" + satirlar(r, cal, KOMBINE))
         st.caption(f"Olası skor {r['Skor']} ({pct(r['Skor_p'])}) · "
                    f"Gol beklentisi {r['xG_ev']:.2f} – {r['xG_dep']:.2f}"
                    + ("" if r["piyasa"] else " · oran yok, sadece model"))

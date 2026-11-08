@@ -1,0 +1,4 @@
+__pycache__/
+veri/*.csv
+!veri/kalibrasyon.csv
+.venv/
